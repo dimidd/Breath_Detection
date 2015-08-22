@@ -21,7 +21,7 @@ for fileno = 1 : nf
     fnam = fname(1:end - 4);
     outname = sprintf('%s%s%s',outdir,fnam,'.txt');
     
-    %%%%%%%%%%%%%%%%%%%%  Read the values of audio files  %%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%  Read the sample values of audio files  %%%%%%%%%%%%%%%%%%%%
     
     [s_1,fs1] = wavread(filnam);
     s = s_1(:,1);
@@ -30,14 +30,14 @@ for fileno = 1 : nf
     s = s./max(abs(s));
     fs = 16000;
     
-    %%%%%%%%%%%%%%  Extract GCI locations using ZFF method  %%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%  Extract GCI locations using ZFF method  %%%%%%%%%%%%%%%%%%%%
     
     [~,vnv,~,~,~,gci] = epochStrengthExtract_voc(s,fs);
     ngci = length(gci);
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%%%  Code snippet to remove short segments of vnv  %%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%  Code snippet to remove short segments detected using Zero frequency energy  %%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     vnv_reg = vnv;
     vnv_reg(1) = 0;
@@ -66,7 +66,9 @@ for fileno = 1 : nf
     
     vnv = vnv_reg;
     
-    %%%%%%%%%%%%%%%  calculation of DRF & DRS using ZTL  %%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%  calculation of DRF & DRS values  %%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%  DRF means Dominant resonance frequency  %%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%  DRS means dominant resonance strength  %%%%%%%%%%%%%%%%%%
     
     [s1,pos1,hngdM] = HNGDandMSSPs(s,fs,fs*0.01);
     
@@ -124,6 +126,31 @@ for fileno = 1 : nf
     %     hngd_h = hngd_h./max(abs(hngd_h));
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%  High to low frequency energy ratio at only GCIs  %%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    h2lf_ratio = zeros(ngci,1);
+    
+    for k = 1 : ngci
+        
+        if gci(k) <= 16
+            
+            h2lf_part = hngd_ratio(1 : gci(k) + 16);
+            h2lf_ratio(k) = sum(h2lf_part)/(gci(k) + 16);
+            
+        else
+            
+            h2lf_part = hngd_ratio(gci(k) - 16 : gci(k) + 16);
+            h2lf_ratio(k) = sum(h2lf_part)/33;
+            
+        end
+        
+    end
+    
+    %     hngd_ratio = hngd_ratio./max(abs(hngd_ratio));
+    h2lf_ratio = h2lf_ratio./max(abs(h2lf_ratio));
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%  Spectral variance of the speech signal  %%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -154,35 +181,10 @@ for fileno = 1 : nf
     var_hngd_gci = var_hngd_gci./max(abs(var_hngd_gci));
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%  High to low frequency energy ratio at only GCIs  %%%%%%%%%
+    %%%%%%%%%%%%%  Apply thresholds to detect breath segments  %%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    h2lf_ratio = zeros(ngci,1);
-    
-    for k = 1 : ngci
-        
-        if gci(k) <= 16
-            
-            h2lf_part = hngd_ratio(1 : gci(k) + 16);
-            h2lf_ratio(k) = sum(h2lf_part)/(gci(k) + 16);
-            
-        else
-            
-            h2lf_part = hngd_ratio(gci(k) - 16 : gci(k) + 16);
-            h2lf_ratio(k) = sum(h2lf_part)/33;
-            
-        end
-        
-    end
-    
-    %     hngd_ratio = hngd_ratio./max(abs(hngd_ratio));
-    h2lf_ratio = h2lf_ratio./max(abs(h2lf_ratio));
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%%  Apply thresholds to detect VOCNOISE regions  %%%%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    %%%%%%%%%%%%  Required GCIs considered for VOCNOISE detection  %%%%%%%%
+    %%%%%%%%%%%%  Required GCIs considered for breath detection  %%%%%%%%%
     
     req_reg1 = (vnv - 1).*(-1); %%%% regions obtained based on excitation source features.
     
@@ -328,11 +330,11 @@ for fileno = 1 : nf
     
     req_regions_sig = req_regions_mod2;
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%  Post-Processing End  %%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%  Post-Processing End  %%%%%%%%%%%%%%%%%%%%%%%%
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%  Algorithm End  %%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%  Algorithm End  %%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    %%%%%%%%%%%%%%  Code to write laughter boundaries to a file  %%%%%%%%%%
+    %%%%%%%%%%%  Code to write breath segment boundaries to a file  %%%%%%%%
     
     breath_bound = req_regions_sig;
     breath_bound(1) = 0;
