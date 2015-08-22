@@ -12,7 +12,7 @@ nf = length(folnam);
 
 disp('Detecting breath segments');
 
-for fileno = 1 %: nf
+for fileno = 1 : nf
     
     disp('Processing the file:');
     finame = folnam(fileno)
